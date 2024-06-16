@@ -26,14 +26,17 @@ function build_templatedata_string(options) {
 }
 
 function AMCP_PARAMETER(data) {
-	data = data.replace(/\//g, '\\\\')
+	// TODO: Why does this not work on Ubuntu
+	/*data = data.replace(/\//g, '\\\\')
 	data = data.replace(/"/g, '\\"')
 
 	if (data.match(/\s/)) {
 		return '"' + data + '"'
 	}
 
-	return data
+	return data*/
+
+	return "\"" + data + "\""
 }
 
 function esc(str) {

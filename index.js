@@ -1,6 +1,9 @@
 const { Regex, InstanceBase, runEntrypoint, TCPHelper, InstanceStatus } = require('@companion-module/base')
 const { parseString } = require('xml2js')
 const compileActionDefinitions = require('./actions')
+const OSCServer = require('./oscserver')
+const compileFeedbackDefinitions = require('./feedbacks')
+const compileVariableDefinitions = require('./variables')
 
 class instance extends InstanceBase {
 	constructor(internal) {
@@ -14,16 +17,22 @@ class instance extends InstanceBase {
 
 	async init(config) {
 		this.config = config
+		
+		this.serverState = {};
 
 		this.init_actions() // export actions
+		this.init_variables() 
+		this.init_feedbacks() // export feedback
 
 		this.init_tcp()
+		this.init_osc()
 	}
 
 	async configUpdated(config) {
 		this.config = config
 
 		this.init_tcp()
+		this.init_osc()
 	}
 
 	// When module gets deleted
@@ -49,6 +58,13 @@ class instance extends InstanceBase {
 				id: 'port',
 				label: 'AMCP TCP Port',
 				default: 5250,
+				regex: Regex.PORT,
+			},
+			{
+				type: 'textinput',
+				id: 'oscport',
+				label: 'OSC UDP Port',
+				default: "",
 				regex: Regex.PORT,
 			},
 		]
@@ -250,6 +266,24 @@ class instance extends InstanceBase {
 		}
 	}
 
+	init_osc() {
+		if (this.oscServer) {
+			this.oscServer.destroy()
+			delete this.oscServer
+		}
+
+		if (this.config.oscport) {
+			this.oscServer = OSCServer.listen(this.config.oscport);
+			this.oscServer.on('state-updated', (state) => {
+				console.log("state-updated", state);
+				this.serverState = state;
+
+				this.init_variables();
+				this.checkFeedbacks();
+			})
+		}
+	}
+
 	handleCLS(data) {
 		this.CHOICES_MEDIAFILES.length = 0
 
@@ -347,6 +381,18 @@ class instance extends InstanceBase {
 	init_actions() {
 		this.setActionDefinitions(compileActionDefinitions(this))
 	}
+
+	init_feedbacks() {
+		console.log(JSON.stringify(compileFeedbackDefinitions(this)))
+		this.setFeedbackDefinitions(compileFeedbackDefinitions(this))
+		//UpdateFeedbacks(this);
+	}
+
+	init_variables() {
+		this.setVariableDefinitions(compileVariableDefinitions(this))
+		//UpdateVariableDefinitions(this);
+	}
+
 	requestData(command, params, callback) {
 		if (this.socket && this.socket.isConnected) {
 			command = command.toUpperCase()
