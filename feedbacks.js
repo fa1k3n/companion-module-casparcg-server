@@ -1,16 +1,6 @@
 const { combineRgb } = require('@companion-module/base')
 
-module.exports = function compileFeedbackDefinitions(self) {
-	return {
-		PlayState: {
-			name: 'Playstate',
-			type: 'boolean',
-			label: 'Play State',
-			defaultStyle: {
-				bgcolor: combineRgb(255, 0, 0),
-				color: combineRgb(0, 0, 0),
-			},
-			options: [
+const standardOptions = [
 				{
 					id: 'channelid',
 					type: 'textinput',
@@ -24,13 +14,6 @@ module.exports = function compileFeedbackDefinitions(self) {
 					'default': "20",
 				},
 				{
-				    id: 'template_name',
-				    type: 'dropdown', 
-			    	label: 'Template',
-			    	choices: self.CHOICES_TEMPLATES,
-			    	default: ''
-        		},
-				{
 				    id: 'playstate',
 				    type: 'dropdown', 
 			    	label: 'State',
@@ -40,91 +23,102 @@ module.exports = function compileFeedbackDefinitions(self) {
 			        	{ id: 'unloaded', label: 'unloaded' },
 			    	],
 			    	default: 'playing'
-        		},
+        },]
+
+module.exports = function compileFeedbackDefinitions(self) {
+	return {
+		TemplateFeedback: {
+			name: 'Template feedback',
+			type: 'boolean',
+			label: 'Template feedback',
+			defaultStyle: {
+				bgcolor: combineRgb(255, 0, 0),
+				color: combineRgb(0, 0, 0),
+			},
+			options: [
+        ...standardOptions, 
+        {
+				    id: 'template_name',
+				    type: 'dropdown', 
+			    	label: 'Template',
+			    	choices: self.CHOICES_TEMPLATES,
+			    	default: ''
+        },
 			],
 			callback: async (feedback, context) => {
 				try {
-					//console.log("SERVER STATE", JSON.stringify(self.serverState))
-					
-			/*		SERVER STATE 
-					{"channel": {
-						"1": {
-							"format":["1080p5000"],
-							"framerate":[50,3276800],
-							"mixer": {
-								"audio": {
-									"volume":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
-								}
-							},
-							"output": {
-								"port": {
-									"601": {
-										"consumer":["screen"],
-										"screen": {
-											"always_on_top":[false],
-											"index":[1],
-											"key_only":[false],
-											"name":["Fill"]
-										}
-									},
-									"610": {
-										"consumer":["screen"],
-										"screen":{
-											"always_on_top":[false],
-											"index":[0],
-											"key_only":[true],
-											"name":["Key"]
-										}
-									}
-								}
-							},
-							"stage": {
-								"layer": {
-									"20": {
-										"background": {
-											"producer":["empty"]
-										},
-										"foreground": {
-											"file": {
-												"path":["file:///opt/CasparCG-server/template/TImer_upper_left/TImer_upper_left.html"]
-											},
-											"paused":[false],
-											"producer":["html"]
-										}
-									}
-								}
-							}
-						}
-					}
-				} */
+					/*
+						"foreground": {
+						"file": {
+							"path":["file:///opt/CasparCG-server/template/template_name/template_name.html"]
+						},
+						"paused":[false],
+						"producer":["html"]
+					} */
+					const foreground = self.serverState['channel'][feedback.options.channelid]['stage']['layer'][feedback.options.layerid]['foreground'];
 
-/*foreground {
-  file: {
-    clip: [],
-    name: [ 'FREDRIK_HYPE_FINAL.MOV' ],
-    path: [ 'media/Fredrik_hype_final.mov' ],
-    streams: { '0': [Object], '1': [Object], '2': [Object] },
-    time: []
-  },
-  loop: [ false ],
-  paused: [ false ],
-  producer: [ 'ffmpeg' ]
-}*/
+					if(foreground["producer"][0] !== "html")
+						return false;  // Not a template 
 
-					if(feedback.options.playstate == 'playing') {
-						let foreground = self.serverState['channel'][feedback.options.channelid]['stage']['layer'][feedback.options.layerid]['foreground'];
-						console.log("foreground", foreground)
-						if(foreground["producer"][0] === "ffmpeg") {
-							console.log("STREAMS", JSON.stringify(foreground["file"]["streams"]))
-						}
-						if(foreground["producer"][0] !== "html" || foreground["paused"][0]) {
-							return false;
-						}
-						if(foreground["file"]["path"][0].toUpperCase().includes(feedback.options.template_name))
-							return true
-					} else if (feedback.options.playstate == 'loaded') {
+					if(!foreground["file"]["path"][0].toUpperCase().includes(feedback.options.template_name))
+							return false // Wrong template name
+				
+					if(feedback.options.playstate == 'playing' && !foreground["paused"][0])
+						return true
+					else if (feedback.options.playstate == 'loaded' && foreground["paused"][0])
+						return true
+				} catch (err) {
+					if (feedback.options.playstate == 'unloaded') {
 						return self.serverState['channel'][feedback.options.channelid]['stage']['layer'][feedback.options.layerid]['foreground']['producer'][0] === 'empty'
 					}
+				}
+				return false;
+			},
+		},
+		VideoFeedback: {
+			name: 'Video feedback',
+			type: 'boolean',
+			label: 'Video feedback',
+			defaultStyle: {
+				bgcolor: combineRgb(255, 0, 0),
+				color: combineRgb(0, 0, 0),
+			},
+			options: [
+        ...standardOptions, 
+        {
+				    id: 'video_name',
+				    type: 'dropdown', 
+			    	label: 'Video',
+			    	choices: self.CHOICES_MEDIAFILES,
+			    	default: ''
+        },
+			],
+			callback: async (feedback, context) => {
+				/*foreground {
+				  file: {
+				    clip: [],
+				    name: [ 'filnamn.MOV' ],
+				    path: [ 'media/filnamn.mov' ],
+				    streams: { '0': [Object], '1': [Object], '2': [Object] },
+				    time: []
+				  },
+				  loop: [ false ],
+				  paused: [ false ],
+				  producer: [ 'ffmpeg' ]
+				}*/
+				try {
+					const foreground = self.serverState['channel'][feedback.options.channelid]['stage']['layer'][feedback.options.layerid]['foreground'];
+
+					if(foreground["producer"][0] !== "ffmpeg")
+						return false;  // Not a ffmpeg file, needs to fix this to all video format  
+
+					if(!foreground["file"]["path"][0].toUpperCase().includes(feedback.options.video_name))
+							return false // Wrong video name
+				
+					if(feedback.options.playstate == 'playing' && !foreground["paused"][0])
+						return true
+					else if (feedback.options.playstate == 'loaded' && foreground["paused"][0])
+						return true
 				} catch (err) {
 					if (feedback.options.playstate == 'unloaded') {
 						return self.serverState['channel'][feedback.options.channelid]['stage']['layer'][feedback.options.layerid]['foreground']['producer'][0] === 'empty'

@@ -18,7 +18,7 @@ module.exports = function compileVariableDefinitions(self) {
 	}
 
 	variables.push( { variableId: 'nofChannels', name: 'Number Of Channels' } );
-	values['numberOfChannels'] = nof_channels;
+	values['nofChannels'] = nof_channels;
 
 	self.setVariableDefinitions(variables)
 	self.setVariableValues(values)	

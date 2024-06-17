@@ -115,6 +115,8 @@ class instance extends InstanceBase {
 
 			this.socket.on('error', (err) => {
 				this.log('error', 'Network error: ' + err.message)
+				this.setVariableValues( { "connected": false } )
+
 			})
 
 			this.socket.on('connect', () => {
@@ -122,6 +124,7 @@ class instance extends InstanceBase {
 
 				this.requestData('CLS', null, this.handleCLS.bind(this))
 				this.requestData('TLS', null, this.handleTLS.bind(this))
+				this.setVariableValues( { "connected": true } )
 			})
 
 			let receivebuffer = ''
@@ -321,6 +324,7 @@ class instance extends InstanceBase {
 		}
 
 		this.init_actions()
+		this.init_feedbacks()
 	}
 	executeGOTO(data, options) {
 		if (!data || !data.length || !options) {
